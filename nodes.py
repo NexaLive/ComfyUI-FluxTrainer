@@ -313,6 +313,28 @@ class TrainDatasetsAdd:
         return json.dumps(dataset, sort_keys=True)
 
 
+class CountPngFileNum:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required": {
+            "folder_root": ("STRING", {"multiline": True, "default": "",
+                                        "tooltip": "root to folder"}),
+        }}
+
+    RETURN_TYPES = ("INT",)
+    RETURN_NAMES = ("png_file_num",)
+    FUNCTION = "count_png_files"
+    CATEGORY = "FluxTrainer"
+
+    def count_png_files(self, folder_root):
+        count = 0
+        for root, dirs, files in os.walk(folder_root):
+            for file in files:
+                if file.lower().endswith('.png'):
+                    count += 1
+        return count
+
+
 class OptimizerConfig:
     @classmethod
     def INPUT_TYPES(s):
@@ -1838,6 +1860,7 @@ NODE_CLASS_MAPPINGS = {
     "TrainDatasetGeneralConfig": TrainDatasetGeneralConfig,
     "TrainDatasetAdd": TrainDatasetAdd,
     "TrainDatasetsAdd": TrainDatasetsAdd,
+    "CountPngFileNum": CountPngFileNum,
     "FluxTrainLoop": FluxTrainLoop,
     "VisualizeLoss": VisualizeLoss,
     "FluxTrainValidate": FluxTrainValidate,
@@ -1866,6 +1889,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TrainDatasetGeneralConfig": "TrainDatasetGeneralConfig",
     "TrainDatasetAdd": "TrainDatasetAdd",
     "TrainDatasetsAdd": "TrainDatasetsAdd",
+    "CountPngFileNum": "Count Png File Num",
     "FluxTrainLoop": "Flux Train Loop",
     "VisualizeLoss": "Visualize Loss",
     "FluxTrainValidate": "Flux Train Validate",
