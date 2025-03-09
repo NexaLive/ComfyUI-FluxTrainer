@@ -224,6 +224,95 @@ class TrainDatasetAdd:
         # Create a unique signature for the dataset based on its attributes
         return json.dumps(dataset, sort_keys=True)
 
+
+class TrainDatasetsAdd:
+    def __init__(self):
+        self.previous_dataset_signature = None
+
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required": {
+            "dataset_config": ("JSON",),
+            "batch_size": ("INT", {"min": 1, "default": 2,
+                                   "tooltip": "Higher batch size uses more memory and generalizes the training more"}),
+            "dataset_root": ("STRING", {"multiline": True, "default": "",
+                                        "tooltip": "root to dataset, root is the 'ComfyUI' folder, with windows portable 'ComfyUI_windows_portable'"}),
+            "class_tokens": ("STRING", {"multiline": True, "default": "",
+                                        "tooltip": "aka trigger word, if specified, will be added to the start of each caption, if no captions exist, will be used on it's own"}),
+            "enable_bucket": (
+            "BOOLEAN", {"default": True, "tooltip": "enable buckets for multi aspect ratio training"}),
+            "bucket_no_upscale": ("BOOLEAN", {"default": False, "tooltip": "don't allow upscaling when bucketing"}),
+            "num_repeats": (
+            "INT", {"default": 1, "min": 1, "tooltip": "number of times to repeat dataset for an epoch"}),
+            "min_bucket_reso": (
+            "INT", {"default": 256, "min": 64, "max": 4096, "step": 8, "tooltip": "min bucket resolution"}),
+            "max_bucket_reso": (
+            "INT", {"default": 1024, "min": 64, "max": 4096, "step": 8, "tooltip": "max bucket resolution"}),
+        },
+            "optional": {
+                "regularization": ("JSON", {"tooltip": "reg data dir"}),
+            }
+        }
+
+    RETURN_TYPES = ("JSON",)
+    RETURN_NAMES = ("dataset",)
+    FUNCTION = "create_config"
+    CATEGORY = "FluxTrainer"
+
+    def create_config(self, dataset_config, dataset_root, class_tokens, batch_size, num_repeats,
+                      enable_bucket,
+                      bucket_no_upscale, min_bucket_reso, max_bucket_reso, regularization=None):
+        # Load the existing datasets
+        existing_datasets = json.loads(dataset_config["datasets"])
+
+        for dataset_name in os.listdir(dataset_root):
+            dataset_path = os.path.join(dataset_root, dataset_name)
+            width, height = dataset_name.split("_")
+            new_dataset = {
+                "resolution": (int(width), int(height)),
+                "batch_size": batch_size,
+                "enable_bucket": enable_bucket,
+                "bucket_no_upscale": bucket_no_upscale,
+                "min_bucket_reso": min_bucket_reso,
+                "max_bucket_reso": max_bucket_reso,
+                "subsets": [
+                    {
+                        "image_dir": dataset_path,
+                        "class_tokens": class_tokens,
+                        "num_repeats": num_repeats
+                    }
+                ]
+            }
+            if regularization is not None:
+                new_dataset["subsets"].append(regularization)
+
+            # Generate a signature for the new dataset
+            new_dataset_signature = self.generate_signature(new_dataset)
+
+            # Remove the previously added dataset if it exists
+            if self.previous_dataset_signature:
+                existing_datasets["datasets"] = [
+                    ds for ds in existing_datasets["datasets"]
+                    if self.generate_signature(ds) != self.previous_dataset_signature
+                ]
+
+            # Add the new dataset
+            existing_datasets["datasets"].append(new_dataset)
+
+            # Store the new dataset signature for future runs
+            self.previous_dataset_signature = new_dataset_signature
+
+        # Convert back to JSON and update dataset_config
+        updated_dataset_json = json.dumps(existing_datasets, indent=2)
+        dataset_config["datasets"] = updated_dataset_json
+
+        return dataset_config,
+
+    def generate_signature(self, dataset):
+        # Create a unique signature for the dataset based on its attributes
+        return json.dumps(dataset, sort_keys=True)
+
+
 class OptimizerConfig:
     @classmethod
     def INPUT_TYPES(s):
