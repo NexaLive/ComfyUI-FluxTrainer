@@ -332,7 +332,7 @@ class CountPngFileNum:
             for file in files:
                 if file.lower().endswith('.png'):
                     count += 1
-        return count
+        return (count, )
 
 
 class OptimizerConfig:
